@@ -1,3 +1,6 @@
+
+var previousStates = [];
+
 function GameManager(size, InputManager, Actuator, StorageManager) {
   this.size           = size; // Size of the grid
   this.inputManager   = new InputManager;
@@ -9,6 +12,7 @@ function GameManager(size, InputManager, Actuator, StorageManager) {
   this.inputManager.on("move", this.move.bind(this));
   this.inputManager.on("restart", this.restart.bind(this));
   this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
+  this.inputManager.on("undo", this.undoMove.bind(this));
 
   this.setup();
 }
@@ -128,6 +132,10 @@ GameManager.prototype.moveTile = function (tile, cell) {
 
 // Move tiles on the grid in the specified direction
 GameManager.prototype.move = function (direction) {
+  console.log("Storing previous gameState");
+
+  previousStates.push(this.storageManager.getGameState());
+
   // 0: up, 1: right, 2: down, 3: left
   var self = this;
 
@@ -269,4 +277,24 @@ GameManager.prototype.tileMatchesAvailable = function () {
 
 GameManager.prototype.positionsEqual = function (first, second) {
   return first.x === second.x && first.y === second.y;
+};
+
+// Undo last move
+GameManager.prototype.undoMove = function () {
+  
+  // Reload the game from a previous state if present
+  if (typeof previousStates !== 'undefined' && previousStates.length > 0) {
+
+    var prev_state = previousStates.pop();
+
+    // the array is defined and has at least one element
+    this.grid        = new Grid(prev_state.grid.size,
+                                prev_state.grid.cells); // Reload grid
+    this.score       = prev_state.score;
+    this.over        = prev_state.over;
+    this.won         = prev_state.won;
+    this.keepPlaying = prev_state.keepPlaying;
+
+    this.actuate();
+  }
 };
